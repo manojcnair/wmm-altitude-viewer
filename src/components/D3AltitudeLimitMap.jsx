@@ -9,8 +9,11 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
   const canvasRef = useRef(null);
   const svgRef = useRef(null);
   const containerRef = useRef(null);
+  const overlayRef = useRef(null);
+  const projectionRef = useRef(null); // Store projection for mouse events
   const [worldData, setWorldData] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
+  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
 
   // Load world coastlines data (cached)
   useEffect(() => {
@@ -96,6 +99,9 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
     const projection = geoMollweide()
       .fitSize([width, height], { type: 'Sphere' })
       .precision(0.1);
+
+    // Store projection for mouse event handlers
+    projectionRef.current = projection;
 
     const path = geoPath().projection(projection);
 
@@ -193,6 +199,78 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
 
   }, [data, component, errorModel, worldData, dimensions, colorScale]);
 
+  // Mouse event handlers for tooltip
+  const handleMouseMove = (event) => {
+    if (!data || !projectionRef.current || !overlayRef.current) return;
+
+    const rect = overlayRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Use inverse projection to get [lon, lat]
+    const coords = projectionRef.current.invert([x, y]);
+    if (!coords) {
+      setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+      return;
+    }
+
+    let [lon, lat] = coords;
+
+    // Normalize longitude to [0, 360] to match data grid
+    if (lon < 0) lon += 360;
+
+    // Find nearest grid cell
+    const lats = data.lats;
+    const lons = data.lons;
+
+    // Clamp lat/lon to grid bounds
+    lat = Math.max(lats[0], Math.min(lats[lats.length - 1], lat));
+    lon = Math.max(lons[0], Math.min(lons[lons.length - 1], lon));
+
+    // Find nearest indices
+    let latIdx = 0;
+    let minLatDist = Math.abs(lat - lats[0]);
+    for (let i = 1; i < lats.length; i++) {
+      const dist = Math.abs(lat - lats[i]);
+      if (dist < minLatDist) {
+        minLatDist = dist;
+        latIdx = i;
+      }
+    }
+
+    let lonIdx = 0;
+    let minLonDist = Math.abs(lon - lons[0]);
+    for (let i = 1; i < lons.length; i++) {
+      const dist = Math.abs(lon - lons[i]);
+      if (dist < minLonDist) {
+        minLonDist = dist;
+        lonIdx = i;
+      }
+    }
+
+    // Get value from altitude limit grid
+    const fieldSuffix = errorModel === 'milspec' ? '_alt_limit_milspec' : '_alt_limit_wmm';
+    const fieldName = `${component}${fieldSuffix}`;
+    const grid = data[fieldName];
+    const value = grid[latIdx][lonIdx];
+
+    // Update tooltip
+    setTooltip({
+      visible: true,
+      x: event.clientX,
+      y: event.clientY,
+      lat: lats[latIdx],
+      lon: lons[lonIdx],
+      value,
+      latIdx,
+      lonIdx
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+  };
+
   const currentComponent = COMPONENTS.find(c => c.id === component);
 
   return (
@@ -212,6 +290,39 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
         className="absolute inset-0"
         style={{ pointerEvents: 'none' }}
       />
+
+      {/* Transparent overlay for mouse events */}
+      <div
+        ref={overlayRef}
+        className="absolute inset-0 cursor-crosshair"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{ pointerEvents: 'auto' }}
+      />
+
+      {/* Hover tooltip */}
+      {tooltip.visible && (
+        <div
+          className="fixed bg-gray-900/95 border border-gray-600 rounded px-3 py-2 text-sm pointer-events-none shadow-lg z-[2000]"
+          style={{
+            left: `${tooltip.x + 15}px`,
+            top: `${tooltip.y + 15}px`
+          }}
+        >
+          <p className="font-semibold text-white mb-1">
+            Grid: [{tooltip.latIdx}][{tooltip.lonIdx}]
+          </p>
+          <p className="text-gray-300">
+            Lat: <span className="text-blue-400">{tooltip.lat}°</span>
+          </p>
+          <p className="text-gray-300">
+            Lon: <span className="text-blue-400">{tooltip.lon}°</span>
+          </p>
+          <p className="text-gray-300">
+            Alt Limit: <span className="text-orange-400 font-semibold">{tooltip.value?.toFixed(0)} km</span>
+          </p>
+        </div>
+      )}
 
       {/* Info panel */}
       <div className="absolute top-4 left-4 bg-gray-800/90 text-white px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none">
