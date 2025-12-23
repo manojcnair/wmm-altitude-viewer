@@ -1,0 +1,10 @@
+# Data Directory
+
+Place your exported JSON files here:
+- G0.json
+- G1.json
+- G2.json
+- G3.json
+- G4.json
+
+Run the MATLAB script `export_wmm_for_web.m` to generate these files.
