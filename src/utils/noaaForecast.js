@@ -77,6 +77,31 @@ export function parseNOAAForecast(textData) {
     const issuedMatch = textData.match(/Issued:\s*(\d{4}\s+\w+\s+\d{2}\s+\d{4})\s+UTC/);
     const issuedTimestamp = issuedMatch ? issuedMatch[1] : 'Unknown';
 
+    // Get current UTC hour to find the appropriate forecast period
+    const now = new Date();
+    const currentUTCHour = now.getUTCHours();
+
+    // Determine which 3-hour period we're in
+    // Periods: 00-03, 03-06, 06-09, 09-12, 12-15, 15-18, 18-21, 21-00
+    let timeWindow;
+    if (currentUTCHour >= 0 && currentUTCHour < 3) {
+      timeWindow = '00-03UT';
+    } else if (currentUTCHour >= 3 && currentUTCHour < 6) {
+      timeWindow = '03-06UT';
+    } else if (currentUTCHour >= 6 && currentUTCHour < 9) {
+      timeWindow = '06-09UT';
+    } else if (currentUTCHour >= 9 && currentUTCHour < 12) {
+      timeWindow = '09-12UT';
+    } else if (currentUTCHour >= 12 && currentUTCHour < 15) {
+      timeWindow = '12-15UT';
+    } else if (currentUTCHour >= 15 && currentUTCHour < 18) {
+      timeWindow = '15-18UT';
+    } else if (currentUTCHour >= 18 && currentUTCHour < 21) {
+      timeWindow = '18-21UT';
+    } else {
+      timeWindow = '21-00UT';
+    }
+
     // Find the Kp forecast section
     const kpSectionMatch = textData.match(/NOAA Kp index forecast[\s\S]*?(\d{2}-\d{2}UT\s+[\d.]+)/);
     if (!kpSectionMatch) {
@@ -84,15 +109,19 @@ export function parseNOAAForecast(textData) {
       return null;
     }
 
-    // Extract the first Kp value (00-03UT for the first forecasted day)
-    // This represents the most recent/current forecast period
-    const firstKpMatch = textData.match(/00-03UT\s+([\d.]+)/);
-    if (!firstKpMatch) {
+    // Extract Kp value for the current time window
+    const regex = new RegExp(timeWindow + '\\s+([\\d.]+)');
+    const currentKpMatch = textData.match(regex);
+
+    // Fallback to first value if current window not found
+    const kpMatch = currentKpMatch || textData.match(/00-03UT\s+([\d.]+)/);
+
+    if (!kpMatch) {
       console.error('Could not extract Kp value from forecast');
       return null;
     }
 
-    const kp = parseFloat(firstKpMatch[1]);
+    const kp = parseFloat(kpMatch[1]);
     const gScale = kpToGScale(kp);
     const gScaleInfo = getGScaleInfo(gScale);
 
