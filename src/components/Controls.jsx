@@ -22,7 +22,7 @@ export default function Controls({
     <aside className="w-80 bg-gray-800 text-white p-6 space-y-6 overflow-y-auto">
       <div>
         <h1 className="text-2xl font-bold text-blue-400 mb-1">
-          WMM Altitude Viewer
+          World Magnetic Model Error Visualizer
         </h1>
         <p className="text-xs text-gray-400">
           {viewMode === 'altitude_limits'
@@ -250,6 +250,22 @@ export default function Controls({
             <p>Values: 0-10,000 km</p>
           </>
         )}
+      </div>
+
+      {/* Citation */}
+      <div className="pt-3 border-t border-gray-700 text-xs text-gray-400">
+        <p className="mb-1.5 text-gray-300 font-semibold">Based on research:</p>
+        <p className="leading-relaxed">
+          Nair, M., Fillion, M., Chulliat, A., & Califf, S. (2025). Global geomagnetic model errors as a function of altitude and geomagnetic activity. <em>Space Weather</em>, <em>23</em>(10), e2025SW004579.{' '}
+          <a
+            href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2025SW004579"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline"
+          >
+            View paper ↗
+          </a>
+        </p>
       </div>
     </aside>
   );
