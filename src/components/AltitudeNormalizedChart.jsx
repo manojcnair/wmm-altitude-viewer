@@ -95,18 +95,40 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
   }
 
   // Calculate altitude limit (where error exceeds threshold)
-  // Find the altitude where the curve intersects the threshold, snapping to lower altitude
+  // Detect multiple crossings and find exact crossing point
   let altitudeLimit = null;
+  let crossingCount = 0;
+  const startsAboveThreshold = chartData[0].error > normalizedThreshold;
+
+  // Check if curve always stays above threshold
+  const alwaysAboveThreshold = chartData.every(d => d.error > normalizedThreshold);
+
+  // Count upward crossings (error exceeding threshold)
   for (let i = 0; i < chartData.length - 1; i++) {
     const curr = chartData[i];
     const next = chartData[i + 1];
 
-    // Check if threshold is crossed between curr and next
+    // Check if threshold is crossed upward between curr and next
     if (curr.error <= normalizedThreshold && next.error > normalizedThreshold) {
-      // Snap to lower altitude (curr)
-      altitudeLimit = curr.altitude;
-      break;
+      crossingCount++;
+
+      // Only calculate exact crossing for first upward crossing
+      if (crossingCount === 1) {
+        // Linear interpolation to find exact crossing altitude
+        const fraction = (normalizedThreshold - curr.error) / (next.error - curr.error);
+        const exactCrossing = curr.altitude + fraction * (next.altitude - curr.altitude);
+        // Round down to nearest 100 km
+        altitudeLimit = Math.floor(exactCrossing / 100) * 100;
+      }
     }
+  }
+
+  // Check for "Exceeds" case:
+  // - Curve always stays above threshold, OR
+  // - Error exceeds at ground and crosses again, OR
+  // - Crosses multiple times (exceeds → acceptable → exceeds)
+  if (alwaysAboveThreshold || (startsAboveThreshold && crossingCount > 0) || crossingCount > 1) {
+    altitudeLimit = "Exceeds";
   }
 
   // Custom tooltip
@@ -152,10 +174,15 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
               <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
               <span className="text-gray-400">Threshold</span>
             </div>
-            {altitudeLimit !== null && (
+            {altitudeLimit !== null && altitudeLimit !== "Exceeds" && (
               <div className="flex items-center gap-2">
                 <div className="w-0.5 h-8 border-l-2 border-dashed border-green-500"></div>
-                <span className="text-gray-400">Limit</span>
+                <span className="text-gray-400">Limit: <span className="text-green-400 font-semibold">{altitudeLimit} km</span></span>
+              </div>
+            )}
+            {altitudeLimit === "Exceeds" && (
+              <div className="flex items-center gap-2">
+                <span className="text-red-400 font-semibold">Exceeds at all altitudes</span>
               </div>
             )}
           </div>
@@ -237,7 +264,7 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
           />
 
           {/* Altitude limit indicator - vertical line where error exceeds threshold */}
-          {altitudeLimit !== null && (
+          {altitudeLimit !== null && altitudeLimit !== "Exceeds" && (
             <ReferenceLine
               x={altitudeLimit}
               stroke="#22c55e"
