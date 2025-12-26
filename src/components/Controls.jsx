@@ -25,7 +25,7 @@ export default function Controls({
       <div>
         <div className="flex items-center justify-between mb-1">
           <a
-            href="https://www.ncei.noaa.gov/products/world-magnetic-model"
+            href="https://www.ncei.noaa.gov/products/world-magnetic-model/accuracy-limitations-error-model"
             target="_blank"
             rel="noopener noreferrer"
             className="text-2xl font-bold text-blue-400 hover:text-blue-300 transition-colors"
