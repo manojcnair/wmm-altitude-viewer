@@ -117,8 +117,10 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
         // Linear interpolation to find exact crossing altitude
         const fraction = (normalizedThreshold - curr.error) / (next.error - curr.error);
         const exactCrossing = curr.altitude + fraction * (next.altitude - curr.altitude);
-        // Round down to nearest 100 km
-        altitudeLimit = Math.floor(exactCrossing / 100) * 100;
+        // Clamp interpolated value to bounds (safety check)
+        const clampedCrossing = Math.max(curr.altitude, Math.min(next.altitude, exactCrossing));
+        // Round to nearest 100 km (matches MATLAB behavior)
+        altitudeLimit = Math.round(clampedCrossing / 100) * 100;
       }
     }
   }
