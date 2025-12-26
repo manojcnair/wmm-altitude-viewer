@@ -94,6 +94,21 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
     currentTick *= 10;
   }
 
+  // Calculate altitude limit (where error exceeds threshold)
+  // Find the altitude where the curve intersects the threshold, snapping to lower altitude
+  let altitudeLimit = null;
+  for (let i = 0; i < chartData.length - 1; i++) {
+    const curr = chartData[i];
+    const next = chartData[i + 1];
+
+    // Check if threshold is crossed between curr and next
+    if (curr.error <= normalizedThreshold && next.error > normalizedThreshold) {
+      // Snap to lower altitude (curr)
+      altitudeLimit = curr.altitude;
+      break;
+    }
+  }
+
   // Custom tooltip
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -137,12 +152,18 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
               <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
               <span className="text-gray-400">Threshold</span>
             </div>
+            {altitudeLimit !== null && (
+              <div className="flex items-center gap-2">
+                <div className="w-0.5 h-8 border-l-2 border-dashed border-green-500"></div>
+                <span className="text-gray-400">Limit</span>
+              </div>
+            )}
           </div>
         </div>
         <p className="text-xs text-gray-400 italic mt-0.5">
           {isIntensityComponent
-            ? 'Errors normalized by WMM field strength (%) - accounts for field weakening with altitude'
-            : 'Absolute errors in degrees - angular quantities do not decay with altitude'}
+            ? 'Errors normalized by WMM field strength (%) - accounts for field weakening with altitude. Where does error exceed threshold?'
+            : 'Absolute errors in degrees - angular quantities do not decay with altitude. Where does error exceed threshold?'}
         </p>
       </div>
 
@@ -214,6 +235,23 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
               fontSize: 11
             }}
           />
+
+          {/* Altitude limit indicator - vertical line where error exceeds threshold */}
+          {altitudeLimit !== null && (
+            <ReferenceLine
+              x={altitudeLimit}
+              stroke="#22c55e"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              label={{
+                value: `Limit: ${altitudeLimit} km`,
+                position: 'top',
+                fill: '#22c55e',
+                fontSize: 11,
+                fontWeight: 'bold'
+              }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

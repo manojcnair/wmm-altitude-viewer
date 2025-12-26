@@ -106,7 +106,7 @@ export default function AltitudeChart({ data, component, threshold }) {
           </div>
         </div>
         <p className="text-xs text-gray-400 italic mt-0.5">
-          Shows global average error at each altitude. Where does error exceed threshold?
+          Shows global average error at each altitude
         </p>
       </div>
 
