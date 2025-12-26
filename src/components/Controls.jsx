@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { COMPONENTS, ALTITUDES, G_SCALE_LABELS } from '../constants';
 
 export default function Controls({
@@ -17,19 +18,176 @@ export default function Controls({
   setErrorModel
 }) {
   const currentComponent = COMPONENTS.find(c => c.id === component);
+  const [showHelp, setShowHelp] = useState(false);
 
   return (
     <aside className="w-80 bg-gray-800 text-white p-6 space-y-6 overflow-y-auto">
       <div>
-        <h1 className="text-2xl font-bold text-blue-400 mb-1">
-          World Magnetic Model Error Visualizer
-        </h1>
+        <div className="flex items-center justify-between mb-1">
+          <a
+            href="https://www.ncei.noaa.gov/products/world-magnetic-model"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-2xl font-bold text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            World Magnetic Model Error Visualizer
+          </a>
+          <button
+            onClick={() => setShowHelp(true)}
+            className="ml-2 w-6 h-6 rounded-full border-2 border-gray-500 text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors flex items-center justify-center text-sm font-bold"
+            title="Help"
+          >
+            ?
+          </button>
+        </div>
         <p className="text-xs text-gray-400">
           {viewMode === 'altitude_limits'
             ? 'Maximum altitude where WMM is valid'
             : 'Magnetic field model errors vs. altitude'}
         </p>
       </div>
+
+      {/* Help Popup */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[3000] p-4" onClick={() => setShowHelp(false)}>
+          <div className="bg-gray-800 rounded-lg shadow-2xl max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-blue-400">Understanding This Tool</h2>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="text-gray-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-4 text-sm">
+              <p className="text-gray-300">
+                This viewer shows where and how high the World Magnetic Model (WMM) remains accurate. The WMM is the standard model used worldwide for navigation, satellite attitude control, and compass calibration.
+              </p>
+
+              <div>
+                <h3 className="font-semibold text-white mb-2">What the Maps Show</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li><span className="font-semibold text-blue-400">Error Maps:</span> The magnitude of WMM error at each location for the selected altitude and geomagnetic conditions.</li>
+                  <li><span className="font-semibold text-blue-400">Altitude Limit Maps:</span> The maximum altitude (in km) at which WMM errors stay within acceptable limits at each location. Green/yellow means reliable to higher altitudes; blue means reliability is limited to lower altitudes; white means the threshold is exceeded even at ground level.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-2">Threshold Standards</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li><span className="font-semibold text-orange-400">MilSpec:</span> The military performance specification (MIL-PRF-89500B) that WMM must meet throughout its 5-year lifespan. These are maximum allowable errors for operational use.</li>
+                  <li><span className="font-semibold text-purple-400">WMM Error Model:</span> A stricter, realistic estimate of expected WMM accuracy based on known error sources including crustal anomalies and external field disturbances.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-2">Geomagnetic Activity (G-Scale)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border border-gray-700">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-3 py-2 text-left border-r border-gray-600">Level</th>
+                        <th className="px-3 py-2 text-left border-r border-gray-600">Conditions</th>
+                        <th className="px-3 py-2 text-left">How Often</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-300">
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-semibold border-r border-gray-600">G0</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Quiet (normal)</td>
+                        <td className="px-3 py-2">~63% of time</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-semibold border-r border-gray-600">G1</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Minor storm</td>
+                        <td className="px-3 py-2">~22%</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-semibold border-r border-gray-600">G2</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Moderate storm</td>
+                        <td className="px-3 py-2">~9%</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-semibold border-r border-gray-600">G3</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Strong storm</td>
+                        <td className="px-3 py-2">~4%</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-semibold border-r border-gray-600">G4</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Severe storm</td>
+                        <td className="px-3 py-2">~2%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-gray-400 mt-2 italic text-xs">
+                  Higher activity levels mean stronger disturbances from ionospheric and magnetospheric currents, which increase WMM errors and reduce the altitude range where the model is reliable.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-2">Magnetic Components</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border border-gray-700">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-3 py-2 text-left border-r border-gray-600">Symbol</th>
+                        <th className="px-3 py-2 text-left border-r border-gray-600">Name</th>
+                        <th className="px-3 py-2 text-left">What It Represents</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-300">
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">F</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Total Intensity</td>
+                        <td className="px-3 py-2">Overall magnetic field strength</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">H</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Horizontal Intensity</td>
+                        <td className="px-3 py-2">Horizontal field strength</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">D</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Declination</td>
+                        <td className="px-3 py-2">Compass deviation from true north</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">I</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Inclination</td>
+                        <td className="px-3 py-2">Field dip angle from horizontal</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">X</td>
+                        <td className="px-3 py-2 border-r border-gray-600">North Component</td>
+                        <td className="px-3 py-2">Northward field strength</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">Y</td>
+                        <td className="px-3 py-2 border-r border-gray-600">East Component</td>
+                        <td className="px-3 py-2">Eastward field strength</td>
+                      </tr>
+                      <tr className="border-t border-gray-700">
+                        <td className="px-3 py-2 font-mono font-bold border-r border-gray-600">Z</td>
+                        <td className="px-3 py-2 border-r border-gray-600">Down Component</td>
+                        <td className="px-3 py-2">Downward field strength</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-700">
+                <h3 className="font-semibold text-white mb-2">Reference</h3>
+                <p className="text-gray-300 text-xs">
+                  Based on: Nair, M., Fillion, M., Chulliat, A., & Califf, S. (2025). Global Geomagnetic Model Errors as a Function of Altitude and Geomagnetic Activity. <em>Space Weather</em>, <em>23</em>, e2025SW004579.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View Mode Selector */}
       <div>
