@@ -3,7 +3,7 @@ import { geoPath, geoGraticule } from 'd3-geo';
 import { geoMollweide } from 'd3-geo-projection';
 import { select } from 'd3-selection';
 import { feature } from 'topojson-client';
-import { COMPONENTS, jetColormap } from '../constants';
+import { COMPONENTS, jetColormapReversed } from '../constants';
 
 export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbed = false }) {
   const canvasRef = useRef(null);
@@ -158,7 +158,7 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
           ctx.fillStyle = '#444';
           ctx.globalAlpha = 0.5;
         } else {
-          ctx.fillStyle = jetColormap(value, colorScale.min, colorScale.max);
+          ctx.fillStyle = jetColormapReversed(value, colorScale.min, colorScale.max);
           ctx.globalAlpha = 0.8;
         }
         ctx.fill();
@@ -369,7 +369,7 @@ function ColorLegend({ component, colorScale, isEmbed = false }) {
     // Draw gradient
     for (let i = 0; i < width; i++) {
       const value = (i / width) * colorScale.max;
-      ctx.fillStyle = jetColormap(value, colorScale.min, colorScale.max);
+      ctx.fillStyle = jetColormapReversed(value, colorScale.min, colorScale.max);
       ctx.fillRect(i, 0, 1, height);
     }
   }, [colorScale, canvasWidth, isEmbed]);
