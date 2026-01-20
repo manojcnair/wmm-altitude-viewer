@@ -15,24 +15,26 @@ const CACHE_DURATION_MS = 3 * 60 * 60 * 1000; // 3 hours
 /**
  * Convert Kp index to G-scale
  *
- * NOAA G-scale classification:
- * - G5 (Extreme): Kp >= 9
- * - G4 (Severe): Kp >= 8
- * - G3 (Strong): Kp >= 7
- * - G2 (Moderate): Kp >= 6
- * - G1 (Minor): Kp >= 5
- * - G0 (Quiet): Kp < 5 (custom level for this application)
+ * NOAA G-scale classification using Kp "thirds" notation:
+ * - G5 (Extreme): Kp >= 9.00 (9o, 9+)
+ * - G4 (Severe):  Kp >= 7.67 (8-, 8o, 8+, 9-)
+ * - G3 (Strong):  Kp >= 6.67 (7-, 7o, 7+)
+ * - G2 (Moderate): Kp >= 5.67 (6-, 6o, 6+)
+ * - G1 (Minor):   Kp >= 4.67 (5-, 5o, 5+)
+ * - G0 (Quiet):   Kp < 4.67
  *
- * @param {number} kp - Kp index value (0-9)
+ * Reference: https://www.swpc.noaa.gov/noaa-scales-explanation
+ *
+ * @param {number} kp - Kp index value (0-9.33)
  * @returns {number} G-scale value (0-5)
  */
 export function kpToGScale(kp) {
-  if (kp >= 9) return 5;  // G5 - Extreme
-  if (kp >= 8) return 4;  // G4 - Severe
-  if (kp >= 7) return 3;  // G3 - Strong
-  if (kp >= 6) return 2;  // G2 - Moderate
-  if (kp >= 5) return 1;  // G1 - Minor
-  return 0;               // G0 - Quiet (Kp < 5)
+  if (kp >= 9) return 5;     // G5 - Extreme (9o, 9+)
+  if (kp >= 7.67) return 4;  // G4 - Severe (8-, 8o, 8+, 9-)
+  if (kp >= 6.67) return 3;  // G3 - Strong (7-, 7o, 7+)
+  if (kp >= 5.67) return 2;  // G2 - Moderate (6-, 6o, 6+)
+  if (kp >= 4.67) return 1;  // G1 - Minor (5-, 5o, 5+)
+  return 0;                  // G0 - Quiet (< 5-)
 }
 
 /**
