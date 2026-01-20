@@ -5,7 +5,7 @@ import { select } from 'd3-selection';
 import { feature } from 'topojson-client';
 import { COMPONENTS, jetColormap } from '../constants';
 
-export default function D3AltitudeLimitMap({ data, component, errorModel }) {
+export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbed = false }) {
   const canvasRef = useRef(null);
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -325,15 +325,12 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
       )}
 
       {/* Info panel */}
-      <div className="absolute top-4 left-4 bg-gray-800/90 text-white px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none">
-        <h3 className="font-semibold text-sm mb-1">
+      <div className={`absolute top-2 left-2 bg-gray-800/90 text-white rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none ${isEmbed ? 'px-2 py-1.5' : 'px-4 py-3 md:top-4 md:left-4'}`}>
+        <h3 className={`font-semibold ${isEmbed ? 'text-xs' : 'text-xs md:text-sm'} mb-0.5`}>
           {currentComponent?.name} - Altitude Limit
         </h3>
         <p className="text-xs text-gray-300">
-          Error Model: {errorModel === 'milspec' ? 'MilSpec' : 'WMM Error'}
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          Range: {colorScale.dataMin?.toFixed(0)} - {colorScale.dataMax?.toFixed(0)} km
+          {errorModel === 'milspec' ? 'MilSpec' : 'WMM'} | {colorScale.dataMin?.toFixed(0)}-{colorScale.dataMax?.toFixed(0)} km
         </p>
       </div>
 
@@ -341,6 +338,7 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
       <ColorLegend
         component={currentComponent}
         colorScale={colorScale}
+        isEmbed={isEmbed}
       />
 
       {/* Loading overlay */}
@@ -356,16 +354,17 @@ export default function D3AltitudeLimitMap({ data, component, errorModel }) {
 }
 
 // Color legend component
-function ColorLegend({ component, colorScale }) {
+function ColorLegend({ component, colorScale, isEmbed = false }) {
   const canvasRef = useRef(null);
+  const canvasWidth = isEmbed ? 120 : 200;
 
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const width = 200;
-    const height = 20;
+    const width = canvasWidth;
+    const height = isEmbed ? 14 : 20;
 
     // Draw gradient
     for (let i = 0; i < width; i++) {
@@ -373,23 +372,20 @@ function ColorLegend({ component, colorScale }) {
       ctx.fillStyle = jetColormap(value, colorScale.min, colorScale.max);
       ctx.fillRect(i, 0, 1, height);
     }
-  }, [colorScale]);
+  }, [colorScale, canvasWidth, isEmbed]);
 
   return (
-    <div className="absolute bottom-4 right-4 bg-gray-800/90 text-white px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none">
-      <h3 className="font-semibold text-xs mb-2">Altitude Scale (km)</h3>
-      <div className="flex items-center gap-2">
-        <span className="text-xs">{colorScale.min}</span>
+    <div className={`absolute bottom-2 right-2 bg-gray-800/90 text-white rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none ${isEmbed ? 'px-2 py-1.5' : 'px-4 py-3 md:bottom-4 md:right-4'}`}>
+      <h3 className={`font-semibold mb-1 ${isEmbed ? 'text-[10px]' : 'text-xs'}`}>Altitude (km)</h3>
+      <div className="flex items-center gap-1">
+        <span className={isEmbed ? 'text-[10px]' : 'text-xs'}>{colorScale.min}</span>
         <canvas
           ref={canvasRef}
-          width={200}
-          height={20}
+          width={canvasWidth}
+          height={isEmbed ? 14 : 20}
           className="border border-gray-600 rounded"
         />
-        <span className="text-xs">{colorScale.max.toFixed(0)}</span>
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 mt-1">
-        <span>Data: {colorScale.dataMin?.toFixed(0)}-{colorScale.dataMax?.toFixed(0)} km</span>
+        <span className={isEmbed ? 'text-[10px]' : 'text-xs'}>{colorScale.max.toFixed(0)}</span>
       </div>
     </div>
   );

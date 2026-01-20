@@ -8,6 +8,9 @@ import { useCurrentGScale } from './hooks/useCurrentGScale';
 import { ALTITUDES } from './constants';
 
 export default function App() {
+  // Check for embed mode via URL parameter (?embed=true)
+  const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
+
   // Fetch current geomagnetic conditions from NOAA
   const { currentGScale, kp, isLoading: forecastLoading } = useCurrentGScale();
 
@@ -109,12 +112,14 @@ export default function App() {
               component={component}
               altIdx={altIdx}
               threshold={threshold}
+              isEmbed={isEmbed}
             />
           ) : (
             <D3AltitudeLimitMap
               data={data}
               component={component}
               errorModel={errorModel}
+              isEmbed={isEmbed}
             />
           )}
         </div>
