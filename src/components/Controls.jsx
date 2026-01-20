@@ -93,41 +93,41 @@ export default function Controls({
                         <th className="px-2 py-2 text-left">How Often</th>
                       </tr>
                     </thead>
-                    <tbody className="text-gray-300">
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G0</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">0o–4+</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Quiet (normal)</td>
+                    <tbody>
+                      <tr className="border-t border-gray-700 bg-green-700 text-white">
+                        <td className="px-2 py-2 font-semibold border-r border-green-600">G0</td>
+                        <td className="px-2 py-2 font-mono border-r border-green-600">0o–4+</td>
+                        <td className="px-2 py-2 border-r border-green-600">Quiet (normal)</td>
                         <td className="px-2 py-2">~63%</td>
                       </tr>
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G1</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">5−, 5o, 5+</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Minor storm</td>
+                      <tr className="border-t border-gray-700 bg-yellow-500 text-gray-900">
+                        <td className="px-2 py-2 font-semibold border-r border-yellow-400">G1</td>
+                        <td className="px-2 py-2 font-mono border-r border-yellow-400">5−, 5o, 5+</td>
+                        <td className="px-2 py-2 border-r border-yellow-400">Minor storm</td>
                         <td className="px-2 py-2">~22%</td>
                       </tr>
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G2</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">6−, 6o, 6+</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Moderate storm</td>
+                      <tr className="border-t border-gray-700 bg-orange-500 text-white">
+                        <td className="px-2 py-2 font-semibold border-r border-orange-400">G2</td>
+                        <td className="px-2 py-2 font-mono border-r border-orange-400">6−, 6o, 6+</td>
+                        <td className="px-2 py-2 border-r border-orange-400">Moderate storm</td>
                         <td className="px-2 py-2">~9%</td>
                       </tr>
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G3</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">7−, 7o, 7+</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Strong storm</td>
+                      <tr className="border-t border-gray-700 bg-orange-700 text-white">
+                        <td className="px-2 py-2 font-semibold border-r border-orange-600">G3</td>
+                        <td className="px-2 py-2 font-mono border-r border-orange-600">7−, 7o, 7+</td>
+                        <td className="px-2 py-2 border-r border-orange-600">Strong storm</td>
                         <td className="px-2 py-2">~4%</td>
                       </tr>
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G4</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">8−, 8o, 8+, 9−</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Severe storm</td>
+                      <tr className="border-t border-gray-700 bg-red-600 text-white">
+                        <td className="px-2 py-2 font-semibold border-r border-red-500">G4</td>
+                        <td className="px-2 py-2 font-mono border-r border-red-500">8−, 8o, 8+, 9−</td>
+                        <td className="px-2 py-2 border-r border-red-500">Severe storm</td>
                         <td className="px-2 py-2">~2%</td>
                       </tr>
-                      <tr className="border-t border-gray-700">
-                        <td className="px-2 py-2 font-semibold border-r border-gray-600">G5</td>
-                        <td className="px-2 py-2 font-mono border-r border-gray-600">9o, 9+</td>
-                        <td className="px-2 py-2 border-r border-gray-600">Extreme storm</td>
+                      <tr className="border-t border-gray-700 bg-red-900 text-white">
+                        <td className="px-2 py-2 font-semibold border-r border-red-800">G5</td>
+                        <td className="px-2 py-2 font-mono border-r border-red-800">9o, 9+</td>
+                        <td className="px-2 py-2 border-r border-red-800">Extreme storm</td>
                         <td className="px-2 py-2">&lt;1%</td>
                       </tr>
                     </tbody>
