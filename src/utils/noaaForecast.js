@@ -1,16 +1,22 @@
 /**
- * NOAA Space Weather Forecast Integration
+ * NOAA Space Weather Integration
  *
- * Fetches and parses the 3-day geomagnetic forecast from NOAA SWPC
+ * Fetches observed and forecast Kp index from NOAA SWPC
  * to determine the current G-scale (geomagnetic activity level).
  *
- * Data source: https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt
+ * Primary: Observed Kp (actual measurements)
+ * Fallback: Forecast Kp (predictions)
+ *
+ * Data sources:
+ * - Observed: https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json
+ * - Forecast: https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt
  * Documentation: https://www.swpc.noaa.gov/noaa-scales-explanation
  */
 
+const NOAA_OBSERVED_URL = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json';
 const NOAA_FORECAST_URL = 'https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt';
-const CACHE_KEY = 'noaa_geomag_forecast';
-const CACHE_DURATION_MS = 3 * 60 * 60 * 1000; // 3 hours
+const CACHE_KEY = 'noaa_geomag_data';
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes (observed updates every 3 hours)
 
 /**
  * Convert Kp index to G-scale
@@ -53,6 +59,68 @@ export function getGScaleInfo(gScale) {
     5: { name: 'Extreme', description: 'Extreme geomagnetic storm' }
   };
   return info[gScale] || info[0];
+}
+
+/**
+ * Fetch observed Kp from NOAA planetary K-index JSON
+ *
+ * JSON structure: Array of arrays
+ * - Header: ["time_tag", "Kp", "a_running", "station_count"]
+ * - Data: ["2026-01-20 21:00:00.000", "7.67", "179", "8"]
+ * - Timestamp is the START of the 3-hour window (UTC)
+ *
+ * @returns {Promise<object|null>} Latest observed Kp data or null
+ */
+async function fetchObservedKp() {
+  try {
+    const response = await fetch(NOAA_OBSERVED_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const jsonData = await response.json();
+
+    // Skip header row, get the last (most recent) entry
+    if (!jsonData || jsonData.length < 2) {
+      return null;
+    }
+
+    const latestEntry = jsonData[jsonData.length - 1];
+    const [timeTag, kpStr] = latestEntry;
+
+    // Parse timestamp: "2026-01-20 21:00:00.000" -> Date
+    const timestamp = new Date(timeTag.replace(' ', 'T') + 'Z');
+    const kp = parseFloat(kpStr);
+
+    if (isNaN(kp)) {
+      return null;
+    }
+
+    return {
+      kp,
+      timestamp,
+      timeTag
+    };
+  } catch (error) {
+    console.error('Error fetching observed Kp:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if observed Kp data is current (within the active 3-hour window)
+ *
+ * The observed timestamp marks the START of a 3-hour window.
+ * Data is current if: timestamp <= now < timestamp + 3 hours
+ *
+ * @param {Date} observedTimestamp - Start of the observed window
+ * @returns {boolean} True if observation is for current window
+ */
+function isObservedCurrent(observedTimestamp) {
+  const now = new Date();
+  const windowEnd = new Date(observedTimestamp.getTime() + 3 * 60 * 60 * 1000);
+
+  return observedTimestamp <= now && now < windowEnd;
 }
 
 /**
@@ -142,22 +210,49 @@ export function parseNOAAForecast(textData) {
 }
 
 /**
- * Fetch current geomagnetic forecast from NOAA SWPC
+ * Fetch current geomagnetic conditions from NOAA SWPC
  *
- * @returns {Promise<object>} Forecast data with gScale, kp, timestamp, etc.
- * @throws {Error} If fetch fails or parsing fails
+ * Uses observed Kp as primary source (actual measurements),
+ * falls back to forecast if observed data is not current.
+ *
+ * @returns {Promise<object>} Kp data with gScale, kp, source, etc.
+ * @throws {Error} If both observed and forecast fetch fail
  */
 export async function fetchCurrentGScale() {
   try {
     // Check cache first
     const cached = getCachedForecast();
     if (cached) {
-      console.log('Using cached NOAA forecast data');
+      console.log(`Using cached NOAA data (source: ${cached.source})`);
       return cached;
     }
 
-    // Fetch fresh data from NOAA
-    console.log('Fetching current geomagnetic forecast from NOAA SWPC...');
+    // Try observed Kp first (primary source)
+    console.log('Fetching observed Kp from NOAA SWPC...');
+    const observed = await fetchObservedKp();
+
+    if (observed && isObservedCurrent(observed.timestamp)) {
+      // Observed data is current - use it
+      const gScale = kpToGScale(observed.kp);
+      const gScaleInfo = getGScaleInfo(gScale);
+
+      const result = {
+        gScale,
+        kp: observed.kp,
+        gScaleName: gScaleInfo.name,
+        description: gScaleInfo.description,
+        source: 'observed',
+        observedTime: observed.timeTag,
+        fetchedAt: new Date().toISOString()
+      };
+
+      cacheForecast(result);
+      console.log(`Current conditions (observed): G${gScale} (${gScaleInfo.name}), Kp=${observed.kp}`);
+      return result;
+    }
+
+    // Fall back to forecast
+    console.log('Observed Kp not current, falling back to forecast...');
     const response = await fetch(NOAA_FORECAST_URL);
 
     if (!response.ok) {
@@ -171,14 +266,14 @@ export async function fetchCurrentGScale() {
       throw new Error('Failed to parse NOAA forecast data');
     }
 
-    // Cache the result
+    parsed.source = 'forecast';
     cacheForecast(parsed);
 
-    console.log(`Current geomagnetic conditions: G${parsed.gScale} (${parsed.gScaleName}), Kp=${parsed.kp}`);
+    console.log(`Current conditions (forecast): G${parsed.gScale} (${parsed.gScaleName}), Kp=${parsed.kp}`);
     return parsed;
 
   } catch (error) {
-    console.error('Error fetching NOAA forecast:', error);
+    console.error('Error fetching NOAA data:', error);
 
     // Try to use cached data even if expired
     const staleCache = localStorage.getItem(CACHE_KEY);

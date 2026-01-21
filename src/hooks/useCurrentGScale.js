@@ -4,9 +4,10 @@ import { fetchCurrentGScale } from '../utils/noaaForecast';
 /**
  * React hook for fetching and managing current geomagnetic G-scale from NOAA
  *
- * Fetches the current G-scale forecast on mount and provides:
+ * Fetches the current G-scale on mount and provides:
  * - Current G-scale value (0-5)
  * - Kp index value
+ * - Data source (observed or forecast)
  * - Loading and error states
  * - Timestamp of last update
  * - Staleness indicator
@@ -18,6 +19,7 @@ export function useCurrentGScale() {
   const [kp, setKp] = useState(null);
   const [gScaleName, setGScaleName] = useState(null);
   const [description, setDescription] = useState(null);
+  const [source, setSource] = useState(null); // 'observed' or 'forecast'
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -26,33 +28,35 @@ export function useCurrentGScale() {
   useEffect(() => {
     let isMounted = true;
 
-    async function loadForecast() {
+    async function loadData() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const forecast = await fetchCurrentGScale();
+        const data = await fetchCurrentGScale();
 
         if (!isMounted) return;
 
-        setCurrentGScale(forecast.gScale);
-        setKp(forecast.kp);
-        setGScaleName(forecast.gScaleName);
-        setDescription(forecast.description);
-        setLastUpdated(forecast.fetchedAt);
-        setIsStale(forecast.isStale || false);
+        setCurrentGScale(data.gScale);
+        setKp(data.kp);
+        setGScaleName(data.gScaleName);
+        setDescription(data.description);
+        setSource(data.source || 'forecast');
+        setLastUpdated(data.fetchedAt);
+        setIsStale(data.isStale || false);
 
       } catch (err) {
         if (!isMounted) return;
 
-        console.error('Failed to load NOAA forecast:', err);
+        console.error('Failed to load NOAA data:', err);
         setError(err.message);
 
         // Default to G0 (Quiet) if fetch fails
         setCurrentGScale(0);
         setKp(null);
         setGScaleName('Quiet');
-        setDescription('Live forecast unavailable');
+        setDescription('Live data unavailable');
+        setSource(null);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -60,7 +64,7 @@ export function useCurrentGScale() {
       }
     }
 
-    loadForecast();
+    loadData();
 
     return () => {
       isMounted = false;
@@ -72,6 +76,7 @@ export function useCurrentGScale() {
     kp,
     gScaleName,
     description,
+    source,
     isLoading,
     error,
     lastUpdated,

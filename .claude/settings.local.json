@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:geomag.colorado.edu)"
+      "WebFetch(domain:geomag.colorado.edu)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nUse observed Kp as primary source, forecast as fallback\n\n- Fetch observed Kp from NOAA planetary K-index JSON\n- Use observed if current \\(within active 3-hour window\\)\n- Fall back to forecast if observed data is stale\n- Display source indicator in UI \\(obs/fcst\\)\n- Reduced cache duration to 30 min for fresher data\n\nObserved Kp is the actual measurement; forecast is a prediction.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)"
     ]
   }
 }

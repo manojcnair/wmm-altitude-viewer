@@ -6,6 +6,7 @@ export default function Controls({
   setGScale,
   currentGScale,
   kp,
+  kpSource,
   component,
   setComponent,
   altIdx,
@@ -268,7 +269,12 @@ export default function Controls({
               <div className="flex-1">
                 <p className="text-gray-300">
                   Current: <span className="text-green-400 font-semibold">G{currentGScale}</span>
-                  {kp !== null && ` (Kp=${kp.toFixed(1)})`}
+                  {kp !== null && ` (Kp=${kp.toFixed(2)})`}
+                  {kpSource && (
+                    <span className="text-gray-500 ml-1">
+                      {kpSource === 'observed' ? '• obs' : '• fcst'}
+                    </span>
+                  )}
                 </p>
                 <a
                   href="https://www.swpc.noaa.gov/noaa-scales-explanation#GeomagneticStorms"

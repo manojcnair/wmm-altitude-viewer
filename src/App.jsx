@@ -12,7 +12,7 @@ export default function App() {
   const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
 
   // Fetch current geomagnetic conditions from NOAA
-  const { currentGScale, kp, isLoading: forecastLoading } = useCurrentGScale();
+  const { currentGScale, kp, source: kpSource, isLoading: forecastLoading } = useCurrentGScale();
 
   const [gScale, setGScale] = useState(null);
   const [component, setComponent] = useState('F');
@@ -93,6 +93,7 @@ export default function App() {
         setGScale={setGScale}
         currentGScale={currentGScale}
         kp={kp}
+        kpSource={kpSource}
         component={component}
         setComponent={setComponent}
         altIdx={altIdx}
