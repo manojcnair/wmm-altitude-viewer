@@ -91,7 +91,7 @@ export default function Controls({
                         <th className="px-2 py-2 text-left border-r border-gray-600">Level</th>
                         <th className="px-2 py-2 text-left border-r border-gray-600">Kp</th>
                         <th className="px-2 py-2 text-left border-r border-gray-600">Conditions</th>
-                        <th className="px-2 py-2 text-left">How Often</th>
+                        <th className="px-2 py-2 text-left">Average Frequency (1 cycle = 11 years)</th>
                       </tr>
                     </thead>
                     <tbody>
