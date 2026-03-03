@@ -3,7 +3,7 @@ import { geoPath, geoGraticule } from 'd3-geo';
 import { geoMollweide } from 'd3-geo-projection';
 import { select } from 'd3-selection';
 import { feature } from 'topojson-client';
-import { THRESHOLDS, COMPONENTS, jetColormap } from '../constants';
+import { THRESHOLDS, COMPONENTS, jetColormap, formatLon } from '../constants';
 
 export default function D3MapViewOptimized({ data, component, altIdx, threshold, isEmbed = false }) {
   const canvasRef = useRef(null);
@@ -12,18 +12,25 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
   const overlayRef = useRef(null);
   const projectionRef = useRef(null); // Store projection for mouse events
   const [worldData, setWorldData] = useState(null);
+  const [coastlineError, setCoastlineError] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
-  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0 });
 
   // Load world coastlines data (cached)
   useEffect(() => {
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then(response => response.json())
+    fetch('/data/countries-110m.json')
+      .then(response => {
+        if (!response.ok) throw new Error('Coastline data not found');
+        return response.json();
+      })
       .then(topology => {
         const countries = feature(topology, topology.objects.countries);
         setWorldData(countries);
       })
-      .catch(err => console.error('Failed to load world data:', err));
+      .catch(err => {
+        console.error('Failed to load world data:', err);
+        setCoastlineError(true);
+      });
   }, []);
 
   // Handle resize
@@ -108,18 +115,6 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
     const spherePath = new Path2D(path({ type: 'Sphere' }));
     ctx.fillStyle = '#1a1a2e';
     ctx.fill(spherePath);
-
-    // DIAGNOSTIC: Log grid structure (first render only)
-    if (altIdx === 13 && component === 'F') {
-      console.log('Grid diagnostics:');
-      console.log('  Lats:', lats.length, 'values:', lats);
-      console.log('  Lons:', lons.length, 'values:', lons);
-      console.log('  Altitudes:', data.altitudes.length);
-      console.log('  Grid shape: [', grid.length, '][', grid[0]?.length, '][', grid[0]?.[0]?.length, ']');
-      console.log('  First tile (lat=-85, lon=5):', grid[0]?.[0]?.[altIdx]);
-      console.log('  Last tile (lat=85, lon=355):', grid[17]?.[35]?.[altIdx]);
-      console.log('  Equator, Prime Meridian:', grid[9]?.[18]?.[altIdx]);
-    }
 
     // Draw grid tiles to canvas
     for (let latI = 0; latI < lats.length; latI++) {
@@ -258,14 +253,12 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
       y: event.clientY,
       lat: lats[latIdx],
       lon: lons[lonIdx],
-      value,
-      latIdx,
-      lonIdx
+      value
     });
   };
 
   const handleMouseLeave = () => {
-    setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+    setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0 });
   };
 
   const currentComponent = COMPONENTS.find(c => c.id === component);
@@ -306,17 +299,14 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
             top: `${tooltip.y + 15}px`
           }}
         >
-          <p className="font-semibold text-white mb-1">
-            Grid: [{tooltip.latIdx}][{tooltip.lonIdx}]
-          </p>
           <p className="text-gray-300">
             Lat: <span className="text-blue-400">{tooltip.lat}°</span>
           </p>
           <p className="text-gray-300">
-            Lon: <span className="text-blue-400">{tooltip.lon}°</span>
+            Lon: <span className="text-blue-400">{formatLon(tooltip.lon)}</span>
           </p>
           <p className="text-gray-300">
-            Error: <span className="text-orange-400 font-semibold">{tooltip.value?.toFixed(2)} {currentComponent?.unit}</span>
+            RMS Error: <span className="text-orange-400 font-semibold">{tooltip.value?.toFixed(2)} {currentComponent?.unit}</span>
           </p>
         </div>
       )}
@@ -327,7 +317,7 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
           {currentComponent?.name}
         </h3>
         <p className="text-xs text-gray-300">
-          {data?.altitudes[altIdx]} km | Thresh: {colorScale.threshold} {currentComponent?.unit}
+          {data?.altitudes[altIdx]} km | {threshold === 'MilSpec' ? 'MilSpec' : 'Error Model'}: {colorScale.threshold} {currentComponent?.unit}
         </p>
         {!isEmbed && (
           <p className="text-xs text-gray-400 mt-1">
@@ -342,6 +332,13 @@ export default function D3MapViewOptimized({ data, component, altIdx, threshold,
         colorScale={colorScale}
         isEmbed={isEmbed}
       />
+
+      {/* Coastline error notice */}
+      {coastlineError && (
+        <div className="absolute top-2 right-2 bg-yellow-900/90 text-yellow-200 text-xs rounded px-3 py-2 z-[1000] pointer-events-none md:top-4 md:right-4">
+          Coastlines unavailable
+        </div>
+      )}
 
       {/* Loading overlay */}
       {!data && (
@@ -378,7 +375,7 @@ function ColorLegend({ component, colorScale, isEmbed = false }) {
 
   return (
     <div className={`absolute bottom-2 right-2 bg-gray-800/90 text-white rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none ${isEmbed ? 'px-2 py-1.5' : 'px-4 py-3 md:bottom-4 md:right-4'}`}>
-      <h3 className={`font-semibold mb-1 ${isEmbed ? 'text-[10px]' : 'text-xs'}`}>Error ({component?.unit})</h3>
+      <h3 className={`font-semibold mb-1 ${isEmbed ? 'text-[10px]' : 'text-xs'}`}>RMS Error ({component?.unit})</h3>
       <div className="flex items-center gap-1">
         <span className={isEmbed ? 'text-[10px]' : 'text-xs'}>{colorScale.min}</span>
         <canvas

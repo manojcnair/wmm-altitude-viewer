@@ -3,7 +3,7 @@ import { geoPath, geoGraticule } from 'd3-geo';
 import { geoMollweide } from 'd3-geo-projection';
 import { select } from 'd3-selection';
 import { feature } from 'topojson-client';
-import { COMPONENTS, jetColormapReversed } from '../constants';
+import { COMPONENTS, jetColormapReversed, formatLon } from '../constants';
 
 export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbed = false }) {
   const canvasRef = useRef(null);
@@ -12,18 +12,25 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
   const overlayRef = useRef(null);
   const projectionRef = useRef(null); // Store projection for mouse events
   const [worldData, setWorldData] = useState(null);
+  const [coastlineError, setCoastlineError] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
-  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0 });
 
   // Load world coastlines data (cached)
   useEffect(() => {
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then(response => response.json())
+    fetch('/data/countries-110m.json')
+      .then(response => {
+        if (!response.ok) throw new Error('Coastline data not found');
+        return response.json();
+      })
       .then(topology => {
         const countries = feature(topology, topology.objects.countries);
         setWorldData(countries);
       })
-      .catch(err => console.error('Failed to load world data:', err));
+      .catch(err => {
+        console.error('Failed to load world data:', err);
+        setCoastlineError(true);
+      });
   }, []);
 
   // Handle resize
@@ -261,14 +268,12 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
       y: event.clientY,
       lat: lats[latIdx],
       lon: lons[lonIdx],
-      value,
-      latIdx,
-      lonIdx
+      value
     });
   };
 
   const handleMouseLeave = () => {
-    setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0, latIdx: 0, lonIdx: 0 });
+    setTooltip({ visible: false, x: 0, y: 0, lat: 0, lon: 0, value: 0 });
   };
 
   const currentComponent = COMPONENTS.find(c => c.id === component);
@@ -309,17 +314,16 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
             top: `${tooltip.y + 15}px`
           }}
         >
-          <p className="font-semibold text-white mb-1">
-            Grid: [{tooltip.latIdx}][{tooltip.lonIdx}]
-          </p>
           <p className="text-gray-300">
             Lat: <span className="text-blue-400">{tooltip.lat}°</span>
           </p>
           <p className="text-gray-300">
-            Lon: <span className="text-blue-400">{tooltip.lon}°</span>
+            Lon: <span className="text-blue-400">{formatLon(tooltip.lon)}</span>
           </p>
           <p className="text-gray-300">
-            Alt Limit: <span className="text-orange-400 font-semibold">{tooltip.value?.toFixed(0)} km</span>
+            Alt Limit: <span className="text-orange-400 font-semibold">
+              {isNaN(tooltip.value) || tooltip.value === null ? 'Exceeded at ground' : `${tooltip.value?.toFixed(0)} km`}
+            </span>
           </p>
         </div>
       )}
@@ -330,7 +334,7 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
           {currentComponent?.name} - Altitude Limit
         </h3>
         <p className="text-xs text-gray-300">
-          {errorModel === 'milspec' ? 'MilSpec' : 'WMM'} | {colorScale.dataMin?.toFixed(0)}-{colorScale.dataMax?.toFixed(0)} km
+          {errorModel === 'milspec' ? 'MilSpec' : 'Error Model'} | {colorScale.dataMin?.toFixed(0)}-{colorScale.dataMax?.toFixed(0)} km
         </p>
       </div>
 
@@ -340,6 +344,13 @@ export default function D3AltitudeLimitMap({ data, component, errorModel, isEmbe
         colorScale={colorScale}
         isEmbed={isEmbed}
       />
+
+      {/* Coastline error notice */}
+      {coastlineError && (
+        <div className="absolute top-2 right-2 bg-yellow-900/90 text-yellow-200 text-xs rounded px-3 py-2 z-[1000] pointer-events-none md:top-4 md:right-4">
+          Coastlines unavailable
+        </div>
+      )}
 
       {/* Loading overlay */}
       {!data && (
@@ -376,7 +387,7 @@ function ColorLegend({ component, colorScale, isEmbed = false }) {
 
   return (
     <div className={`absolute bottom-2 right-2 bg-gray-800/90 text-white rounded-lg shadow-lg backdrop-blur-sm z-[1000] pointer-events-none ${isEmbed ? 'px-2 py-1.5' : 'px-4 py-3 md:bottom-4 md:right-4'}`}>
-      <h3 className={`font-semibold mb-1 ${isEmbed ? 'text-[10px]' : 'text-xs'}`}>Altitude (km)</h3>
+      <h3 className={`font-semibold mb-1 ${isEmbed ? 'text-[10px]' : 'text-xs'}`}>Max Valid Altitude (km)</h3>
       <div className="flex items-center gap-1">
         <span className={isEmbed ? 'text-[10px]' : 'text-xs'}>{colorScale.min}</span>
         <canvas
@@ -387,6 +398,12 @@ function ColorLegend({ component, colorScale, isEmbed = false }) {
         />
         <span className={isEmbed ? 'text-[10px]' : 'text-xs'}>{colorScale.max.toFixed(0)}</span>
       </div>
+      {!isEmbed && (
+        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-400">
+          <div className="w-3 h-3 rounded" style={{ background: '#444', opacity: 0.5 }}></div>
+          <span>Exceeded at ground level</span>
+        </div>
+      )}
     </div>
   );
 }

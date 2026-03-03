@@ -48,11 +48,27 @@ export const G_SCALE_LABELS = [
   'G5 (Extreme Storm)'
 ];
 
+// Format longitude from 0-360 to ±180 display
+export function formatLon(lon) {
+  if (lon > 180) lon -= 360;
+  return `${lon}°`;
+}
+
 // Jet colormap (MATLAB-style): blue → cyan → green → yellow → red
 export function jetColormap(value, min, max) {
   // Handle NaN and invalid values
   if (isNaN(value) || value === null) {
     return 'rgba(128, 128, 128, 0.3)'; // Gray for NaN
+  }
+
+  // Values exceeding max shown in white/light gray
+  if (value > max) {
+    return 'rgb(240, 240, 240)';
+  }
+
+  // Guard against division by zero when min === max
+  if (min === max) {
+    return 'rgb(0, 0, 128)'; // Return dark blue for uniform data
   }
 
   const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
@@ -86,11 +102,6 @@ export function jetColormap(value, min, max) {
     b = 0;
   }
 
-  // Values exceeding threshold shown in white/light gray
-  if (value > max) {
-    return 'rgb(240, 240, 240)';
-  }
-
   return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
 }
 
@@ -100,6 +111,16 @@ export function jetColormapReversed(value, min, max) {
   // Handle NaN and invalid values
   if (isNaN(value) || value === null) {
     return 'rgba(128, 128, 128, 0.3)'; // Gray for NaN
+  }
+
+  // Values exceeding max
+  if (value > max) {
+    return 'rgb(240, 240, 240)';
+  }
+
+  // Guard against division by zero when min === max
+  if (min === max) {
+    return 'rgb(0, 0, 128)';
   }
 
   // Reverse the normalized value

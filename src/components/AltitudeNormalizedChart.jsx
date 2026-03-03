@@ -135,7 +135,7 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
   //    - Crosses multiple times (exceeds → acceptable → exceeds)
   // 2. "Never Exceeds" case:
   //    - Curve always stays below threshold at all altitudes
-  if (alwaysAboveThreshold || (startsAboveThreshold && crossingCount > 0) || crossingCount > 1) {
+  if (alwaysAboveThreshold || startsAboveThreshold || crossingCount > 1) {
     altitudeLimit = "Exceeds";
   } else if (neverExceedsThreshold) {
     altitudeLimit = "NeverExceeds";
@@ -173,16 +173,16 @@ export default function AltitudeNormalizedChart({ data, component, errorModel })
       <div className="mb-2">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">
-            {isIntensityComponent ? 'Normalized Error Profile vs Altitude' : 'Error Profile vs Altitude'}
+            {currentComponent?.name} — {isIntensityComponent ? 'Normalized Error vs Altitude' : 'Error vs Altitude'}
           </h3>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-blue-400"></div>
-              <span className="text-gray-400">Profile</span>
+              <span className="text-gray-400">Global Avg {isIntensityComponent ? 'Normalized' : 'RMS'} Error</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
-              <span className="text-gray-400">Threshold</span>
+              <span className="text-gray-400">{thresholdKey} Threshold</span>
             </div>
             {altitudeLimit !== null && altitudeLimit !== "Exceeds" && altitudeLimit !== "NeverExceeds" && (
               <div className="flex items-center gap-2">

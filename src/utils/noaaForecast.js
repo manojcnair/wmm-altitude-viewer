@@ -179,12 +179,50 @@ export function parseNOAAForecast(textData) {
       return null;
     }
 
-    // Extract Kp value for the current time window
-    const regex = new RegExp(timeWindow + '\\s+([\\d.]+)');
+    // Determine which column is "today" by parsing the header dates
+    // Header format: "NOAA Kp index forecast 23 Dec - 25 Dec"
+    //                "            23 Dec      24 Dec      25 Dec"
+    const headerMatch = textData.match(/^\s+(\d{1,2}\s+\w+)\s+(\d{1,2}\s+\w+)\s+(\d{1,2}\s+\w+)/m);
+    let todayColumn = 1; // default to first column
+    if (headerMatch) {
+      const now = new Date();
+      const todayDay = now.getUTCDate();
+      const todayMonth = now.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+      for (let col = 1; col <= 3; col++) {
+        const [dayStr, monthStr] = headerMatch[col].trim().split(/\s+/);
+        if (parseInt(dayStr) === todayDay && monthStr === todayMonth) {
+          todayColumn = col;
+          break;
+        }
+      }
+    }
+
+    // Build regex to extract the Kp value from the correct column for the current time window
+    // Each row looks like: "00-03UT        4.67        3.67        2.67"
+    const colPattern = '([\\d.]+)\\s+'.repeat(todayColumn - 1) + '([\\d.]+)';
+    const regex = new RegExp(timeWindow + '\\s+' + colPattern);
     const currentKpMatch = textData.match(regex);
 
-    // Fallback to first value if current window not found
-    const kpMatch = currentKpMatch || textData.match(/00-03UT\s+([\d.]+)/);
+    // Extract the last capture group (the column we want)
+    let kpMatch = null;
+    if (currentKpMatch) {
+      kpMatch = [null, currentKpMatch[currentKpMatch.length - 1]];
+    }
+
+    // Fallback: try first row, correct column
+    if (!kpMatch) {
+      const fallbackRegex = new RegExp('00-03UT\\s+' + colPattern);
+      const fallbackMatch = textData.match(fallbackRegex);
+      if (fallbackMatch) {
+        kpMatch = [null, fallbackMatch[fallbackMatch.length - 1]];
+      }
+    }
+
+    // Final fallback to first value of first row
+    if (!kpMatch) {
+      const lastFallback = textData.match(/00-03UT\s+([\d.]+)/);
+      if (lastFallback) kpMatch = lastFallback;
+    }
 
     if (!kpMatch) {
       console.error('Could not extract Kp value from forecast');
@@ -276,12 +314,17 @@ export async function fetchCurrentGScale() {
     console.error('Error fetching NOAA data:', error);
 
     // Try to use cached data even if expired
-    const staleCache = localStorage.getItem(CACHE_KEY);
-    if (staleCache) {
-      console.warn('Using stale cached data due to fetch error');
-      const parsed = JSON.parse(staleCache);
-      parsed.isStale = true;
-      return parsed;
+    try {
+      const staleCache = localStorage.getItem(CACHE_KEY);
+      if (staleCache) {
+        console.warn('Using stale cached data due to fetch error');
+        const parsed = JSON.parse(staleCache);
+        parsed.isStale = true;
+        return parsed;
+      }
+    } catch (cacheError) {
+      console.error('Corrupted cache data, clearing:', cacheError);
+      localStorage.removeItem(CACHE_KEY);
     }
 
     throw error;

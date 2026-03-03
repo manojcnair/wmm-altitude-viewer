@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { COMPONENTS, ALTITUDES, G_SCALE_LABELS } from '../constants';
 
 export default function Controls({
@@ -21,6 +21,16 @@ export default function Controls({
   const currentComponent = COMPONENTS.find(c => c.id === component);
   const [showHelp, setShowHelp] = useState(false);
 
+  // Close help popup on Escape key
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape' && showHelp) setShowHelp(false);
+  }, [showHelp]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   return (
     <aside className="w-80 bg-gray-800 text-white p-6 space-y-6 overflow-y-auto">
       <div>
@@ -31,12 +41,13 @@ export default function Controls({
             rel="noopener noreferrer"
             className="text-2xl font-bold text-blue-400 hover:text-blue-300 transition-colors"
           >
-            World Magnetic Model Error Visualizer
+            WMM Altitude Error Viewer
           </a>
           <button
             onClick={() => setShowHelp(true)}
             className="ml-2 w-6 h-6 rounded-full border-2 border-gray-500 text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors flex items-center justify-center text-sm font-bold"
             title="Help"
+            aria-label="Open help"
           >
             ?
           </button>
@@ -50,7 +61,7 @@ export default function Controls({
 
       {/* Help Popup */}
       {showHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[3000] p-4" onClick={() => setShowHelp(false)}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[3000] p-4" onClick={() => setShowHelp(false)} role="dialog" aria-modal="true" aria-label="Help">
           <div className="bg-gray-800 rounded-lg shadow-2xl max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-blue-400">Understanding This Tool</h2>
@@ -70,7 +81,7 @@ export default function Controls({
                 <h3 className="font-semibold text-white mb-2">What the Maps Show</h3>
                 <ul className="space-y-2 text-gray-300">
                   <li><span className="font-semibold text-blue-400">Error Maps:</span> The magnitude of WMM error at each location for the selected altitude and geomagnetic conditions.</li>
-                  <li><span className="font-semibold text-blue-400">Altitude Limit Maps:</span> The maximum altitude (in km) at which WMM errors stay within acceptable limits at each location. Green/yellow means reliable to higher altitudes; blue means reliability is limited to lower altitudes; white means the threshold is exceeded even at ground level.</li>
+                  <li><span className="font-semibold text-blue-400">Altitude Limit Maps:</span> The maximum altitude (in km) at which WMM errors stay within acceptable limits at each location. Green/yellow means reliable to higher altitudes; blue means reliability is limited to lower altitudes; gray means the threshold is exceeded even at ground level.</li>
                 </ul>
               </div>
 
@@ -191,6 +202,13 @@ export default function Controls({
                 </div>
               </div>
 
+              <div>
+                <h3 className="font-semibold text-white mb-2">Normalized Errors (Altitude Limits View)</h3>
+                <p className="text-gray-300">
+                  In the Altitude Limits view, the chart for intensity components (F, H, X, Y, Z) shows errors as a percentage of the WMM field strength. This normalization accounts for the magnetic field weakening with altitude — a fixed nT threshold becomes progressively harder to meet as the field itself decreases. Angular components (D, I) are shown in absolute degrees since they do not decay with altitude.
+                </p>
+              </div>
+
               <div className="pt-2 border-t border-gray-700">
                 <h3 className="font-semibold text-white mb-2">Reference</h3>
                 <p className="text-gray-300 text-xs">
@@ -210,6 +228,7 @@ export default function Controls({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setViewMode('altitude_limits')}
+            aria-pressed={viewMode === 'altitude_limits'}
             className={`py-2.5 rounded font-semibold transition-colors ${
               viewMode === 'altitude_limits'
                 ? 'bg-purple-600 hover:bg-purple-700'
@@ -220,6 +239,7 @@ export default function Controls({
           </button>
           <button
             onClick={() => setViewMode('errors')}
+            aria-pressed={viewMode === 'errors'}
             className={`py-2.5 rounded font-semibold transition-colors ${
               viewMode === 'errors'
                 ? 'bg-blue-600 hover:bg-blue-700'
@@ -241,6 +261,7 @@ export default function Controls({
             <button
               key={g}
               onClick={() => setGScale(g)}
+              aria-pressed={gScale === g}
               className={`relative py-2 rounded font-semibold transition-colors ${
                 gScale === g
                   ? 'bg-blue-600 hover:bg-blue-700'
@@ -272,7 +293,7 @@ export default function Controls({
                   {kp !== null && ` (Kp=${kp.toFixed(2)})`}
                   {kpSource && (
                     <span className="text-gray-500 ml-1">
-                      {kpSource === 'observed' ? '• obs' : '• fcst'}
+                      {kpSource === 'observed' ? '• observed' : '• forecast'}
                     </span>
                   )}
                 </p>
@@ -362,13 +383,13 @@ export default function Controls({
                   : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              WMM
+              Error Model
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2 italic">
             {errorModel === 'milspec'
               ? 'Military specification thresholds for operational requirements'
-              : 'WMM error model thresholds for scientific evaluation'}
+              : 'WMM theoretical error model estimate'}
           </p>
         </div>
       )}
@@ -398,13 +419,13 @@ export default function Controls({
                   : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              WMM
+              Error Model
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2 italic">
             {threshold === 'MilSpec'
               ? 'Military specification thresholds for operational requirements'
-              : 'WMM error model thresholds for scientific evaluation'}
+              : 'WMM theoretical error model estimate'}
           </p>
         </div>
       )}
@@ -413,17 +434,15 @@ export default function Controls({
       <div className="pt-4 border-t border-gray-700 text-xs text-gray-400 space-y-1">
         {viewMode === 'errors' ? (
           <>
-            <p>Grid: 18 lats × 36 lons × 29 altitudes</p>
+            <p>Coverage: Global (10° resolution)</p>
             <p>Projection: Mollweide (equal-area)</p>
-            <p>Map: Tile-based rendering</p>
-            <p>Chart: Log-scale altitude profile</p>
+            <p>Altitudes: 0–10,000 km (29 levels)</p>
           </>
         ) : (
           <>
-            <p>Grid: 18 lats × 36 lons (2D)</p>
+            <p>Coverage: Global (10° resolution)</p>
             <p>Projection: Mollweide (equal-area)</p>
-            <p>Map: Maximum altitude per location</p>
-            <p>Values: 0-10,000 km</p>
+            <p>Shows max valid altitude per location</p>
           </>
         )}
       </div>

@@ -3,9 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://services.swpc.noaa.gov; img-src 'self' data:;" />
+    <meta name="description" content="Interactive visualization of World Magnetic Model (WMM) errors across altitude and geomagnetic activity levels. See where and how high WMM remains accurate for navigation, satellite operations, and compass calibration." />
+    <meta property="og:title" content="WMM Altitude Error Viewer" />
+    <meta property="og:description" content="Interactive visualization of World Magnetic Model errors across altitude and geomagnetic activity. Based on Nair et al. (2025), Space Weather." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://geomag.info" />
     <title>WMM Altitude Error Viewer</title>
   </head>
   <body>
+    <noscript>
+      <div style="background:#111827;color:#d1d5db;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+        <p>The WMM Altitude Error Viewer requires JavaScript to run. Please enable JavaScript in your browser.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

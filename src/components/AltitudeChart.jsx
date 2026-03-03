@@ -92,21 +92,21 @@ export default function AltitudeChart({ data, component, threshold }) {
       <div className="mb-2">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">
-            How Errors Scale with Altitude
+            {currentComponent?.name} — Global Avg RMS Error vs Altitude
           </h3>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-blue-400"></div>
-              <span className="text-gray-400">Profile</span>
+              <span className="text-gray-400">Global Avg RMS Error</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
-              <span className="text-gray-400">Threshold</span>
+              <span className="text-gray-400">{threshold} Threshold</span>
             </div>
           </div>
         </div>
         <p className="text-xs text-gray-400 italic mt-0.5">
-          Shows global average error at each altitude
+          Shows global average RMS error at each altitude
         </p>
       </div>
 
@@ -138,7 +138,11 @@ export default function AltitudeChart({ data, component, threshold }) {
             ticks={yTicks}
             stroke="#9ca3af"
             tick={{ fill: '#9ca3af', fontSize: 11 }}
-            tickFormatter={(value) => value.toFixed(0)}
+            tickFormatter={(value) => {
+              if (Math.abs(value) < 1 && value !== 0) return value.toFixed(2);
+              if (Math.abs(value) < 10) return value.toFixed(1);
+              return value.toFixed(0);
+            }}
             label={{
               value: `Error (${unit})`,
               angle: -90,
