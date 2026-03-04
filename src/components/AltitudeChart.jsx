@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -7,11 +8,50 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Label
+  Customized,
 } from 'recharts';
 import { ALTITUDES, THRESHOLDS, COMPONENTS } from '../constants';
 
-export default function AltitudeChart({ data, component, threshold }) {
+const SAT_COLORS = {
+  'Swarm A': '#f472b6',   // pink
+  'Swarm B': '#a78bfa',   // purple
+  'CHAMP': '#34d399',     // green
+  'CryoSat-2': '#fbbf24', // amber
+};
+
+const SAT_SHAPES = {
+  'Swarm A': 'circle',
+  'Swarm B': 'diamond',
+  'CHAMP': 'triangle',
+  'CryoSat-2': 'square',
+};
+
+// Draw a satellite marker shape at (cx, cy) in SVG
+function drawShape(cx, cy, fill, shape, size = 6) {
+  switch (shape) {
+    case 'diamond':
+      return <polygon points={`${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`} fill={fill} stroke="#fff" strokeWidth={0.5} />;
+    case 'triangle':
+      return <polygon points={`${cx},${cy - size} ${cx + size},${cy + size} ${cx - size},${cy + size}`} fill={fill} stroke="#fff" strokeWidth={0.5} />;
+    case 'square':
+      return <rect x={cx - size + 1} y={cy - size + 1} width={(size - 1) * 2} height={(size - 1) * 2} fill={fill} stroke="#fff" strokeWidth={0.5} />;
+    default:
+      return <circle cx={cx} cy={cy} r={size - 1} fill={fill} stroke="#fff" strokeWidth={0.5} />;
+  }
+}
+
+// Legend shape (smaller, no stroke)
+function LegendShape({ fill, shape }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12">
+      {drawShape(6, 6, fill, shape, 5)}
+    </svg>
+  );
+}
+
+export default function AltitudeChart({ data, component, threshold, satelliteData, gScale }) {
+  const [hoveredSat, setHoveredSat] = useState(null);
+
   if (!data || !data[`profile_${component}`]) {
     return (
       <div className="h-56 bg-gray-800 flex items-center justify-center text-gray-400">
@@ -25,9 +65,7 @@ export default function AltitudeChart({ data, component, threshold }) {
   const unit = currentComponent?.unit || '';
   const thresh = THRESHOLDS[threshold][component];
 
-  // Prepare data for Recharts
-  // Filter out altitudes below 10 km since the X-axis uses log scale with domain [10, 10000]
-  // (log(0) is undefined, which prevents the chart from rendering)
+  // Prepare line data (filter out altitudes < 10 km for log scale)
   const chartData = ALTITUDES
     .map((alt, i) => ({
       altitude: alt,
@@ -35,20 +73,35 @@ export default function AltitudeChart({ data, component, threshold }) {
     }))
     .filter(d => d.altitude >= 10);
 
-  // Calculate Y-axis domain to include both data and threshold
-  const errorValues = chartData.map(d => d.error);
-  const maxError = Math.max(...errorValues);
-  const minError = Math.min(...errorValues);
+  // Build satellite scatter data (G0-G4 only, no G5)
+  const satPoints = [];
+  if (satelliteData && gScale != null && gScale <= 4) {
+    for (const sat of satelliteData.satellites) {
+      const val = sat.errors[component]?.[gScale];
+      if (val != null) {
+        satPoints.push({
+          altitude: sat.altitude,
+          error: val,
+          name: sat.name,
+        });
+      }
+    }
+  }
 
-  // Ensure threshold is visible in the chart
-  const yMax = Math.max(maxError, thresh) * 1.1; // Add 10% padding
-  const yMin = Math.min(minError, thresh) * 0.9; // Subtract 10% padding (or add if negative)
+  // Calculate Y-axis domain including satellite points
+  const errorValues = chartData.map(d => d.error);
+  const allValues = [...errorValues, thresh];
+  for (const pt of satPoints) allValues.push(pt.error);
+  const maxVal = Math.max(...allValues);
+  const minVal = Math.min(...allValues);
+
+  const yMax = maxVal * 1.1;
+  const yMin = minVal * 0.9;
 
   // Calculate nice tick spacing
   const range = yMax - yMin;
   const tickCount = 5;
   const rawStep = range / (tickCount - 1);
-  // Round step to a nice number
   const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
   const niceFraction = rawStep / magnitude;
   let niceStep;
@@ -57,26 +110,25 @@ export default function AltitudeChart({ data, component, threshold }) {
   else if (niceFraction <= 5) niceStep = 5 * magnitude;
   else niceStep = 10 * magnitude;
 
-  // Generate ticks
   const yTicks = [];
   const firstTick = Math.ceil(yMin / niceStep) * niceStep;
-  for (let i = 0; i < 10; i++) { // Max 10 ticks
+  for (let i = 0; i < 10; i++) {
     const tick = firstTick + i * niceStep;
     if (tick > yMax) break;
     yTicks.push(tick);
   }
 
-  // Custom tooltip
+  // Custom tooltip for the line only
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const d = payload[0].payload;
       return (
         <div className="bg-gray-900/95 border border-gray-700 rounded px-3 py-2 text-sm">
           <p className="font-semibold text-white">
-            {data.altitude.toLocaleString()} km
+            {d.altitude.toLocaleString()} km
           </p>
           <p className="text-blue-400">
-            Error: {data.error.toFixed(2)} {unit}
+            Error: {d.error.toFixed(2)} {unit}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             Threshold: {thresh} {unit}
@@ -87,14 +139,51 @@ export default function AltitudeChart({ data, component, threshold }) {
     return null;
   };
 
+  // Render satellite dots using Customized (direct SVG via axis scales)
+  const SatelliteDotsLayer = ({ xAxisMap, yAxisMap }) => {
+    if (!satPoints.length) return null;
+    const xAxis = Object.values(xAxisMap)[0];
+    const yAxis = Object.values(yAxisMap)[0];
+    if (!xAxis?.scale || !yAxis?.scale) return null;
+
+    return (
+      <g>
+        {satPoints.map((pt) => {
+          const cx = xAxis.scale(pt.altitude);
+          const cy = yAxis.scale(pt.error);
+          if (isNaN(cx) || isNaN(cy)) return null;
+          const color = SAT_COLORS[pt.name];
+          const shape = SAT_SHAPES[pt.name];
+          return (
+            <g key={pt.name}>
+              {drawShape(cx, cy, color, shape, 7)}
+              {/* Invisible larger hit area for hover */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={14}
+                fill="transparent"
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={() => setHoveredSat({ ...pt, cx, cy })}
+                onMouseLeave={() => setHoveredSat(null)}
+              />
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
+  const hasSatData = satPoints.length > 0;
+
   return (
-    <div className="bg-gray-800 p-4" style={{ height: '300px' }}>
+    <div className="bg-gray-800 p-4 relative" style={{ height: '300px' }}>
       <div className="mb-2">
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">
             {currentComponent?.name} — Global Avg RMS Error vs Altitude
           </h3>
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-4 text-xs flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-blue-400"></div>
               <span className="text-gray-400">Global Avg RMS Error</span>
@@ -103,10 +192,16 @@ export default function AltitudeChart({ data, component, threshold }) {
               <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
               <span className="text-gray-400">{threshold} Threshold</span>
             </div>
+            {hasSatData && Object.entries(SAT_COLORS).map(([name, color]) => (
+              <div key={name} className="flex items-center gap-1.5">
+                <LegendShape fill={color} shape={SAT_SHAPES[name]} />
+                <span className="text-gray-400">{name}</span>
+              </div>
+            ))}
           </div>
         </div>
         <p className="text-xs text-gray-400 italic mt-0.5">
-          Shows global average RMS error at each altitude
+          Shows global average RMS error at each altitude{hasSatData ? ' with satellite-derived observations' : ''}
         </p>
       </div>
 
@@ -174,8 +269,26 @@ export default function AltitudeChart({ data, component, threshold }) {
               fontSize: 11
             }}
           />
+
+          <Customized component={SatelliteDotsLayer} />
         </LineChart>
       </ResponsiveContainer>
+
+      {/* Satellite hover tooltip (positioned via CSS, outside the SVG) */}
+      {hoveredSat && (
+        <div
+          className="absolute pointer-events-none bg-gray-900/95 border border-gray-700 rounded px-3 py-2 text-sm z-50"
+          style={{ left: hoveredSat.cx + 70, top: hoveredSat.cy + 10 }}
+        >
+          <p className="font-semibold" style={{ color: SAT_COLORS[hoveredSat.name] }}>
+            {hoveredSat.name}
+          </p>
+          <p className="text-white">{hoveredSat.altitude} km</p>
+          <p className="text-gray-300">
+            RMS Error: {hoveredSat.error.toFixed(2)} {unit}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

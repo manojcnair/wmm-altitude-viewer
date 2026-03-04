@@ -21,8 +21,17 @@ export default function App() {
   const [viewMode, setViewMode] = useState('altitude_limits'); // 'errors' or 'altitude_limits'
   const [errorModel, setErrorModel] = useState('milspec'); // 'milspec' or 'wmm' (for altitude limits view)
   const [data, setData] = useState(null);
+  const [satelliteData, setSatelliteData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Load satellite error data once on mount
+  useEffect(() => {
+    fetch('/data/satellite_errors.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setSatelliteData(d))
+      .catch(() => {}); // Non-critical — chart works without it
+  }, []);
 
   // Set default G-scale to current conditions when forecast loads
   useEffect(() => {
@@ -129,6 +138,8 @@ export default function App() {
             data={data}
             component={component}
             threshold={threshold}
+            satelliteData={satelliteData}
+            gScale={gScale}
           />
         )}
         {viewMode === 'altitude_limits' && (
