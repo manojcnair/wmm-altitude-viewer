@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import D3MapViewOptimized from './components/D3MapViewOptimized';
 import D3AltitudeLimitMap from './components/D3AltitudeLimitMap';
 import Controls from './components/Controls';
@@ -96,60 +97,63 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-900">
-      <Controls
-        gScale={gScale}
-        setGScale={setGScale}
-        currentGScale={currentGScale}
-        kp={kp}
-        kpSource={kpSource}
-        component={component}
-        setComponent={setComponent}
-        altIdx={altIdx}
-        setAltIdx={setAltIdx}
-        threshold={threshold}
-        setThreshold={setThreshold}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        errorModel={errorModel}
-        setErrorModel={setErrorModel}
-      />
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1">
-          {viewMode === 'errors' ? (
-            <D3MapViewOptimized
+    <>
+      <div className="h-screen flex bg-gray-900">
+        <Controls
+          gScale={gScale}
+          setGScale={setGScale}
+          currentGScale={currentGScale}
+          kp={kp}
+          kpSource={kpSource}
+          component={component}
+          setComponent={setComponent}
+          altIdx={altIdx}
+          setAltIdx={setAltIdx}
+          threshold={threshold}
+          setThreshold={setThreshold}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          errorModel={errorModel}
+          setErrorModel={setErrorModel}
+        />
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1">
+            {viewMode === 'errors' ? (
+              <D3MapViewOptimized
+                data={data}
+                component={component}
+                altIdx={altIdx}
+                threshold={threshold}
+                isEmbed={isEmbed}
+              />
+            ) : (
+              <D3AltitudeLimitMap
+                data={data}
+                component={component}
+                errorModel={errorModel}
+                isEmbed={isEmbed}
+              />
+            )}
+          </div>
+          {viewMode === 'errors' && (
+            <AltitudeChart
               data={data}
               component={component}
-              altIdx={altIdx}
               threshold={threshold}
-              isEmbed={isEmbed}
+              satelliteData={satelliteData}
+              gScale={gScale}
             />
-          ) : (
-            <D3AltitudeLimitMap
+          )}
+          {viewMode === 'altitude_limits' && (
+            <AltitudeNormalizedChart
               data={data}
               component={component}
               errorModel={errorModel}
-              isEmbed={isEmbed}
             />
           )}
         </div>
-        {viewMode === 'errors' && (
-          <AltitudeChart
-            data={data}
-            component={component}
-            threshold={threshold}
-            satelliteData={satelliteData}
-            gScale={gScale}
-          />
-        )}
-        {viewMode === 'altitude_limits' && (
-          <AltitudeNormalizedChart
-            data={data}
-            component={component}
-            errorModel={errorModel}
-          />
-        )}
       </div>
-    </div>
+      <Analytics />
+    </>
   );
 }
